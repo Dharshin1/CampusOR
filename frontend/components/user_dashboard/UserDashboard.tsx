@@ -157,35 +157,9 @@ export default function UserDashboard({
     }, 1500);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "waiting":
-        return "bg-blue-500";
-      case "near":
-        return "bg-orange-500";
-      case "served":
-        return "bg-green-500";
-      case "cancelled":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
+ 
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "waiting":
-        return <Clock className="w-6 h-6" />;
-      case "near":
-        return <AlertCircle className="w-6 h-6" />;
-      case "served":
-        return <CheckCircle className="w-6 h-6" />;
-      case "cancelled":
-        return <XCircle className="w-6 h-6" />;
-      default:
-        return <Clock className="w-6 h-6" />;
-    }
-  };
+ 
 
   const getStatusText = (status: string) => {
     switch (status) {
