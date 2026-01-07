@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
 import { Queue, Token, TokenStatus } from "./queue.model.js";
 import { TokenService } from "./services/token.service.js";
-import { AuthRequest } from "../../middlewares/auth.js"; 
+import { AuthRequest } from "../../middlewares/auth.js";
 
 // 1: Create a new queue
 export async function createQueue(req: AuthRequest, res: Response) {
   try {
     const { name, location, operator } = req.body;
-    
+
     // Use the explicit operator from body, or default to the creating user
     // (This allows admins to assign operators, or operators to assign themselves)
     const operatorId = operator || req.user?.sub;
@@ -60,7 +60,7 @@ export async function createQueue(req: AuthRequest, res: Response) {
 export async function generateToken(req: Request, res: Response) {
   const { queueId } = req.params;
 
-  // We rely on the service to handle the logic, but we could add 
+  // We rely on the service to handle the logic, but we could add
   // checks here if the queue is active before calling service
   const result = await TokenService.generateToken(queueId);
 
@@ -139,6 +139,60 @@ export async function getQueueOperatorView(req: Request, res: Response) {
     return res.status(500).json({
       success: false,
       error: "Failed to fetch queue state",
+    });
+  }
+}
+
+// 5: Get all queues for public listing
+export async function getQueuesForUsers(req: Request, res: Response) {
+  try {
+    const queues = await Queue.find({}).select(
+      "name location isActive createdAt"
+    );
+
+    // Get queue stats for each queue
+    const queuesWithStats = await Promise.all(
+      queues.map(async (queue) => {
+        // Count waiting tokens for this queue
+        const waitingCount = await Token.countDocuments({
+          queue: queue._id,
+          status: TokenStatus.WAITING,
+        });
+
+        // Calculate estimated wait time (5 minutes per waiting person)
+        const estimatedWaitTime = waitingCount * 5;
+
+        // Determine status based on isActive flag
+        let status: "open" | "paused" | "closed";
+        if (!queue.isActive) {
+          status = "paused";
+        } else if (waitingCount >= 20) {
+          status = "closed";
+        } else {
+          status = "open";
+        }
+
+        return {
+          queueId: `Q-${queue._id.toString().slice(-4)}`,
+          queueName: queue.name,
+          location: queue.location,
+          counterNumber: 1, // Default value, can be enhanced later
+          queueLength: waitingCount,
+          waitTime: estimatedWaitTime,
+          status,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      queues: queuesWithStats,
+    });
+  } catch (error) {
+    console.error("Get Queues Error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch queues",
     });
   }
 }

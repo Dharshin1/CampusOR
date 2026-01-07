@@ -4,10 +4,14 @@ import {
   generateToken,
   updateTokenStatus,
   getQueueOperatorView,
+  getQueuesForUsers,
 } from "./queue.controller.js";
 import { verifyJWT, authorize } from "../../middlewares/auth.js";
 
 const router = Router();
+
+// Public endpoint to get all queues for users
+router.get("/", getQueuesForUsers);
 
 // queues
 // Only operators and admins can create queues
