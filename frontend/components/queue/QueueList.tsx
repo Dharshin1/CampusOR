@@ -1,20 +1,45 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import QueueCard from "./QueueCard";
 import { Queue } from "./queue.types";
-import mockQueuesData from "./mockQueues.json";
+import { queueService } from "../../lib/api/queue";
 
 type SortOption = "waitTime" | "queueLength" | "alphabetical";
-type LocationFilter = "all" | "Admin Block" | "Cafeteria" | "Clinic" | "Hostel" | "Sports Complex";
+type LocationFilter =
+  | "all"
+  | "Admin Block"
+  | "Cafeteria"
+  | "Clinic"
+  | "Hostel"
+  | "Sports Complex";
 type StatusFilter = "all" | "open" | "paused" | "closed";
 
 export default function QueueList() {
   const [sortBy, setSortBy] = useState<SortOption>("waitTime");
   const [locationFilter, setLocationFilter] = useState<LocationFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [queues, setQueues] = useState<Queue[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const queues: Queue[] = mockQueuesData as Queue[];
+  useEffect(() => {
+    const fetchQueues = async () => {
+      try {
+        setLoading(true);
+        const data = await queueService.getQueues();
+        setQueues(data);
+        setError(null);
+      } catch (err) {
+        setError("Failed to load queues");
+        console.error("Error fetching queues:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQueues();
+  }, []);
 
   const filteredAndSortedQueues = useMemo(() => {
     let filtered = [...queues];
@@ -53,78 +78,95 @@ export default function QueueList() {
 
   return (
     <div className="min-h-screen w-full bg-[#F8FAFC]">
-    <div className="w-full max-w-7xl mx-auto p-8 bg-[#F8FAFC] min-h-screen">
-      {/* Header Section */}
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-[#1E293B] mb-2">CampusOR</h1>
-          <p className="text-lg text-[#475569]">Queues</p>
+      <div className="w-full max-w-7xl mx-auto p-8 bg-[#F8FAFC] min-h-screen">
+        {/* Header Section */}
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-[#1E293B] mb-2">CampusOR</h1>
+            <p className="text-lg text-[#475569]">Queues</p>
+          </div>
+
+          {/* Controls on the right */}
+          <div className="flex gap-4 items-center">
+            {/* Sort */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-[#94A3B8] uppercase tracking-wide">
+                Sort
+              </label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1E293B] bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
+              >
+                <option value="waitTime">Wait Time</option>
+                <option value="queueLength">Queue Length</option>
+                <option value="alphabetical">Alphabetical</option>
+              </select>
+            </div>
+
+            {/* Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-[#94A3B8] uppercase tracking-wide">
+                Filter
+              </label>
+              <select
+                value={locationFilter}
+                onChange={(e) =>
+                  setLocationFilter(e.target.value as LocationFilter)
+                }
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1E293B] bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
+              >
+                <option value="all">All Locations</option>
+                {uniqueLocations.map((location) => (
+                  <option key={location} value={location}>
+                    {location}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-[#94A3B8] uppercase tracking-wide">
+                Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value as StatusFilter)
+                }
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1E293B] bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
+              >
+                <option value="all">All</option>
+                <option value="open">Open</option>
+                <option value="paused">Paused</option>
+                <option value="closed">Full</option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        {/* Controls on the right */}
-        <div className="flex gap-4 items-center">
-          {/* Sort */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#94A3B8] uppercase tracking-wide">Sort</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1E293B] bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
-            >
-              <option value="waitTime">Wait Time</option>
-              <option value="queueLength">Queue Length</option>
-              <option value="alphabetical">Alphabetical</option>
-            </select>
+        {/* Queue Cards Grid */}
+        {loading ? (
+          <div className="text-center py-12 text-[#475569]">
+            <p>Loading queues...</p>
           </div>
-
-          {/* Filter */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#94A3B8] uppercase tracking-wide">Filter</label>
-            <select
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value as LocationFilter)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1E293B] bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
-            >
-              <option value="all">All Locations</option>
-              {uniqueLocations.map((location) => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
+        ) : error ? (
+          <div className="text-center py-12 text-red-600">
+            <p>{error}</p>
           </div>
-
-          {/* Status Filter */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#94A3B8] uppercase tracking-wide">Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm text-[#1E293B] bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
-            >
-              <option value="all">All</option>
-              <option value="open">Open</option>
-              <option value="paused">Paused</option>
-              <option value="closed">Full</option>
-            </select>
+        ) : filteredAndSortedQueues.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredAndSortedQueues.map((queue) => (
+              <QueueCard key={queue.queueId} queue={queue} />
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="text-center py-12 text-[#475569]">
+            <p>No queues found matching your filters.</p>
+          </div>
+        )}
       </div>
-
-      {/* Queue Cards Grid */}
-      {filteredAndSortedQueues.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAndSortedQueues.map((queue) => (
-            <QueueCard key={queue.queueId} queue={queue} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 text-[#475569]">
-          <p>No queues found matching your filters.</p>
-        </div>
-      )}
-    </div>
     </div>
   );
 }
-
